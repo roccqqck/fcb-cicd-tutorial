@@ -1,0 +1,208 @@
+---
+# Source: ileobank/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: ileobank
+  name: ileobank
+data:
+  nginx.conf: |-
+    # Based on https://www.nginx.com/resources/wiki/start/topics/examples/full/#nginx-conf
+    # user              www www;  ## Default: nobody
+
+    worker_processes  auto;
+    error_log         "/opt/bitnami/nginx/logs/error.log";
+    pid               "/opt/bitnami/nginx/tmp/nginx.pid";
+
+    events {
+        worker_connections  1024;
+    }
+
+    http {
+        include       mime.types;
+        default_type  application/octet-stream;
+        log_format    main '$remote_addr - $remote_user [$time_local] '
+                           '"$request" $status  $body_bytes_sent "$http_referer" '
+                           '"$http_user_agent" "$http_x_forwarded_for"';
+        access_log    "/opt/bitnami/nginx/logs/access.log" main;
+        # add_header    X-Frame-Options SAMEORIGIN;
+
+        client_body_temp_path  "/opt/bitnami/nginx/tmp/client_body" 1 2;
+        proxy_temp_path        "/opt/bitnami/nginx/tmp/proxy" 1 2;
+        fastcgi_temp_path      "/opt/bitnami/nginx/tmp/fastcgi" 1 2;
+        scgi_temp_path         "/opt/bitnami/nginx/tmp/scgi" 1 2;
+        uwsgi_temp_path        "/opt/bitnami/nginx/tmp/uwsgi" 1 2;
+
+        sendfile           on;
+        tcp_nopush         on;
+        tcp_nodelay        off;
+        gzip               on;
+        gzip_http_version  1.0;
+        gzip_comp_level    2;
+        gzip_proxied       any;
+        gzip_types         text/plain text/css application/javascript text/xml application/xml+rss;
+        keepalive_timeout  65;
+        ssl_protocols      TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
+        ssl_ciphers        HIGH:!aNULL:!MD5;
+        client_max_body_size 80M;
+        server_tokens off;
+
+        absolute_redirect  off;
+        port_in_redirect   off;
+
+        include  "/opt/bitnami/nginx/conf/server_blocks/*.conf";
+
+        # HTTP Server
+        server {
+            # Port to listen on, can also be set in IP:PORT format
+            listen  8080;
+
+            include  "/opt/bitnami/nginx/conf/bitnami/*.conf";
+
+            location /status {
+                stub_status on;
+                access_log   off;
+                allow 127.0.0.1;
+                deny all;
+            }
+        }
+
+
+
+        # Angular http
+        server {
+            listen       8081;
+            listen  [::]:8081;
+            server_name  localhost;
+
+            #access_log  /var/log/nginx/host.access.log  main;
+
+            index index.html ;
+            location /c1/ileobank/en {
+                alias   /web/en/;
+                try_files $uri$args $uri$args/ /en/index.html;
+            }
+
+            location /c1/ileobank/zh {
+                alias   /web/zh/;
+                try_files $uri$args $uri$args/ /zh/index.html;
+            }
+
+            location /c1/ileobank {
+                alias   /web/zh/;
+                try_files $uri$args $uri$args/ /index.html;
+            }
+        }
+    }
+---
+# Source: ileobank/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: ileobank
+  labels:
+    app: ileobank
+spec:
+  ports:
+  - port: 8081
+    targetPort: 8081
+    protocol: TCP
+    name: http
+  selector:
+    app: ileobank
+---
+# Source: ileobank/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ileobank
+spec:
+  selector:
+    matchLabels:
+      app: ileobank
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: ileobank
+    spec:
+      containers:
+        - name: ileobank
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: '10m'
+              memory: '20M'
+            limits:
+              cpu: '2'
+              memory: '1.5G'
+          image: 'devharbor.firstbank.com.tw/ibank-web/ileobank:6.2.3'
+          ports:
+            - containerPort: 8081
+          readinessProbe:
+            httpGet:
+              path: /c1/ileobank/zh/index.html
+              port: 8081
+              scheme: HTTP
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /c1/ileobank/zh/index.html
+              port: 8081
+              scheme: HTTP
+            initialDelaySeconds: 10
+          env:
+          volumeMounts:
+          - mountPath: /opt/bitnami/nginx/conf/nginx.conf  # mount only one file
+            subPath: nginx.conf  # mount only one file
+            name: nginx-conf  # mount nginx-conf volume to /opt/bitnami/nginx/conf/nginx.conf
+      volumes:
+      - name: nginx-conf  # volume name
+        configMap:
+          name: ileobank  # configMap name
+          items:
+          - key: nginx.conf
+            path: nginx.conf  # rename nginx.conf mount file
+      imagePullSecrets:
+        - name: harbor-secret
+---
+# Source: ileobank/templates/hpa.yaml
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ileobank
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ileobank
+  minReplicas: 1
+  maxReplicas: 2
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        targetAverageUtilization: 18000
+---
+# Source: ileobank/templates/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ileobank
+spec:
+  tls:
+    - hosts:
+        - ibank-web.apps.devocp.firstbank.com.tw
+      secretName: api-tls-certificates
+  rules:
+    - host: ibank-web.apps.devocp.firstbank.com.tw
+      http:
+        paths:
+          - path: /c1/ileobank
+            pathType: Prefix
+            backend:
+              service:
+                name: ileobank
+                port:
+                  number: 8081

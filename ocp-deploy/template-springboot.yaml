@@ -1,0 +1,132 @@
+---
+# Source: ibank-fe-remittance/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: ibank-fe-remittance
+  labels:
+    app: ibank-fe-remittance
+spec:
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: ibank-fe-remittance
+---
+# Source: ibank-fe-remittance/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ibank-fe-remittance
+spec:
+  selector:
+    matchLabels:
+      app: ibank-fe-remittance
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "true"
+      labels:
+        app: ibank-fe-remittance
+    spec:
+      containers:
+        - name: ibank-fe-remittance
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: '100m'
+              memory: '768M'
+            limits:
+              cpu: '2'
+              memory: '1.5G'
+          image: 'devharbor.firstbank.com.tw/ibank/ibank-fe-remittance:0.0.29'
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 10
+          env:
+            - name: MIMOSA_WEB_STRICT
+              value: "false"
+            - name: MIMOSA_SECURITY_ENABLED
+              value: "true"
+            - name: SECURITY_AUTH_URL
+              value: "http://10.14.84.3/MicroServiceGWI"
+            - name: SECURITY_STRICT
+              value: "true"
+            - name: DATABASE_URL
+              value: "jdbc:oracle:thin:@10.14.88.133:1523:FCBNB"
+            - name: DATABASE_MAXIMUM_POOL_SIZE
+              value: "10"
+            - name: DATABASE_CONNECTION_TIMEOUT
+              value: "30000"
+            - name: REDIS_HOST
+              value: "redis-master.ibank-infra"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: REDIS_MAX_ACTIVE
+              value: "8"
+            - name: REDIS_MAX_WAIT
+              value: "60000"
+            - name: SPRING_PROFILES_ACTIVE
+              value: "uat,oracle,jsonout"
+            - name: FE_REMITTANCE_DEBUG
+              value: "true"
+            - name: TELEGRAM_ENABLED
+              value: "true"
+            - name: API_REMITTANCE_URL
+              value: "https://apim.apps.devocp.firstbank.com.tw/esb/netbank/fe/v1"
+            - name: IBM_MQ_QUEUE_MANAGER
+              value: "ESBQM2"
+            - name: IBM_MQ_CHANNEL
+              value: "forims"
+            - name: IBM_MQ_CONN_NAME
+              value: "10.14.88.52(1415)"
+            - name: IBM_MQ_USER
+              value: ""
+            - name: IBM_MQ_PASSWORD
+              value: ""
+            - name: IBM_MQ_POOL_ENABLED
+              value: "true"
+            - name: IBM_MQ_POOL_MAX_CONNECTIONS
+              value: "1"
+            - name: IBM_MQ_POOL_IDLE_TIMEOUT
+              value: "30000"
+            - name: IBM_MQ_REQUEST_QUEUE
+              value: "IMS.ESB.RQ1"
+            - name: IBM_MQ_REPLY_QUEUE
+              value: "ESB.IMS.RS1"
+            - name: JMS_TEMPLATE_RECEIVE_TIMEOUT
+              value: "20000"
+      imagePullSecrets:
+        - name: harbor-secret
+---
+# Source: ibank-fe-remittance/templates/hpa.yaml
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ibank-fe-remittance
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ibank-fe-remittance
+  minReplicas: 1
+  maxReplicas: 2
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        targetAverageUtilization: 1800
