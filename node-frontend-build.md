@@ -1,6 +1,10 @@
 ### references.
 https://cli.vuejs.org/guide/deployment.html#docker-nginx
 
+https://hackmd.io/@c36ICNyhQE6-iTXKxoIocg/H1TE8hXOP
+
+https://linyencheng.github.io/2022/05/30/devops-gitlab-ci-and-gitlab-runner/
+
 
 # git clone 
 ```
