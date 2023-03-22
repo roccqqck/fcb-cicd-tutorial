@@ -5,6 +5,10 @@ https://hackmd.io/@c36ICNyhQE6-iTXKxoIocg/H1TE8hXOP
 
 https://linyencheng.github.io/2022/05/30/devops-gitlab-ci-and-gitlab-runner/
 
+https://docs.docker.com/build/building/multi-stage/
+
+https://docs.docker.com/language/nodejs/build-images/
+
 
 # git clone 
 ```

@@ -7,6 +7,8 @@ https://github.com/GoogleContainerTools/jib/tree/master/jib-maven-plugin
 
 https://github.com/GoogleContainerTools/jib/tree/master/examples/spring-boot
 
+https://docs.docker.com/language/java/build-images/
+
 # git clone
 ```
         stage('取得 Source Code') {
