@@ -86,7 +86,32 @@ https://github.com/GoogleContainerTools/jib/tree/master/examples/spring-boot
 
 
 # pom.xml
+### jib configuration
 ```
+        <plugin>
+          <groupId>com.google.cloud.tools</groupId>
+          <artifactId>jib-maven-plugin</artifactId>
+          <version>${jib-maven-plugin.version}</version>
+          <configuration>
+            <from>
+              <image>${docker-base-image}</image>
+            </from>
+            <to>
+              <image>${docker-image-repository}/${docker-image-project}/${project.artifactId}</image>
+              <tags>
+                <tag>${project.version}</tag>
+              </tags>
+            </to>
+        
+          </configuration>
+        </plugin>
+```
+```
+  <groupId>tw.com.fcb.ibank</groupId>
+  <artifactId>ibank-fe-remittance</artifactId>
+  <version>0.0.29</version>
+  <description>FCB iBank Fe Remittance</description>
+
   <properties>
     <!-- plugin configuration -->
     <docker-base-image>harbor.softleader.com.tw/library/zulu-openjdk-alpine:11-jre-taipei</docker-base-image>
@@ -97,8 +122,6 @@ https://github.com/GoogleContainerTools/jib/tree/master/examples/spring-boot
     <softleader.releases.repository>http://svn.softleader.com.tw:8084/repository/maven-releases/</softleader.releases.repository>
     <softleader.snapshots.repository>http://svn.softleader.com.tw:8084/repository/maven-snapshots/</softleader.snapshots.repository>
   </properties>
-
-
 
 <profiles>
 
@@ -129,22 +152,4 @@ https://github.com/GoogleContainerTools/jib/tree/master/examples/spring-boot
   </profiles>
 
 ```
-```
-        <plugin>
-          <groupId>com.google.cloud.tools</groupId>
-          <artifactId>jib-maven-plugin</artifactId>
-          <version>${jib-maven-plugin.version}</version>
-          <configuration>
-            <from>
-              <image>${docker-base-image}</image>
-            </from>
-            <to>
-              <image>${docker-image-repository}/${docker-image-project}/${project.artifactId}</image>
-              <tags>
-                <tag>${project.version}</tag>
-              </tags>
-            </to>
-        
-          </configuration>
-        </plugin>
-```
+
